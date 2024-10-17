@@ -1,0 +1,12 @@
+{ "manifest_version" : 2
+, "name"             : "Books To Sections"
+, "version"          : "0.1.0"
+, "description"      : "Separate Books into Book Sections"
+, "homepage_url"     : "https://github.com/frankrcastillo/zotero-books-to-sections"
+, "applications"     : { "zotero": { "id"                 : "zotero-books-to-sections@zbts.com"
+                                   , "update_url"         : "https://localhost/updates.json"
+                                   , "strict_min_version" : "6.999"
+                                   , "strict_max_version" : "7.0.*"
+                                   }
+                       }
+}
