@@ -21,19 +21,6 @@ async function startup({ id, version, rootURI }) {
   
   log(`URI: ${rootURI}`);
 
-  // Register preferences
-  try{
-    Zotero.PreferencePanes.register(
-      { pluginID : 'zotero-books-to-sections@zbts.com'
-      , src      : rootURI + 'preferences.xhtml'
-      , scripts  : [rootURI + 'preferences.js']
-      });
-
-  } catch (e) {
-    log("Failed to register preferences", e);
-
-  }
-
   // Define a global console object
   if (typeof console === 'undefined') {
     console = { log   : function(msg) { log(msg); }
