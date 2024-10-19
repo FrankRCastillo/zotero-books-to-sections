@@ -155,12 +155,14 @@ BooksToSections = {
 
               let maxdepth = window.prompt('Enter the maximum depth to look into the PDF bookmark.');
 
-              if (!maxdepth || !Number.isInteger(maxdepth)) {
+              maxdepth = parseInt(maxdepth);
+
+              log(`Max depth value: ${maxdepth}`);
+
+              if (!Number.isInteger(maxdepth) || maxdepth <= 0) {
                 window.alert('Invalid depth value. Enter a positive integer.');
                 break;
               }
-
-              maxdepth = parseInt(maxdepth);
 
               await BooksToSections.getBookmarks(pdfDoc, outline, bookmarks, maxdepth);
 
