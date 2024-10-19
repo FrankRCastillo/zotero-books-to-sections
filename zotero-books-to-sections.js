@@ -153,7 +153,7 @@ BooksToSections = {
 
               let bookmarks = [];
 
-              let maxdepth = window.prompt('Enter the maximum depth to look into the PDF bookmark. Empty or 0 for maximum depth');
+              let maxdepth = window.prompt('Enter the maximum depth to look into the PDF bookmark.');
 
               if (!maxdepth || !Number.isInteger(maxdepth)) {
                 window.alert('Invalid depth value. Enter a positive integer.');
