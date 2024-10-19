@@ -17,10 +17,6 @@ function log(msg, err) {
   }
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 BooksToSections = {
   id              : null,
   version         : null,
@@ -38,11 +34,22 @@ BooksToSections = {
     this.initialized = true;
   },
 
-  async createBookSection(outlineItem, parentItem, collectionId) {
+  async createBookSection(title, parentItem, collectionId) {
     let bookSection = new Zotero.Item('bookSection');
 
-    bookSection.setField('title'    , outlineItem.title);
+    bookSection.setField('title'    , title);
     bookSection.setField('bookTitle', parentItem.getField('title'));
+
+    let fieldIdx = Zotero.ItemFields.getItemTypeFields(bookSection.itemTypeID);
+    let fields   = fieldIdx.map(idx => Zotero.ItemFields.getName(idx));
+
+    for (let field of fields) {
+      if (!['title', 'bookTitle'].includes(field)) {
+        let value = parentItem.getField(field);
+
+        bookSection.setField(field, value);
+      }
+    }
     
     await bookSection.saveTx();
 
@@ -62,6 +69,29 @@ BooksToSections = {
     attachment.attachmentLinkMode = Zotero.Attachments.LINK_MODE_LINKED_URL;
 
     await attachment.saveTx();
+  },
+
+  async getBookmarks(pdfDoc, outlineItems, store = [], maxdepth = 1) {
+	  for (let item of outlineItems) {
+		  if (!item.items || item.items.length === 0 || maxdepth == 1) {
+			  if (typeof item.dest === 'object' && item.dest[0]?.num !== undefined) {
+				  let page = await pdfDoc.getPageIndex(item.dest[0]) + 1;
+				  
+				  store.push({title: item.title, page});
+				  continue;
+			  }
+			  
+			  if (typeof item.dest === 'string') {
+				  let [ref, fitType, ...args] = await pdfDoc.getDestination(item.dest); 
+				  let page = await pdfDoc.getPageIndex(ref) + 1;
+				  
+				  store.push({title: item.title, page});
+				  continue;
+			  }
+		  } else {
+			  await BooksToSections.getBookmarks(pdfDoc, item.items, store, maxdepth - 1);
+		  }
+	  }
   },
 
   addToWindow(window) {
@@ -84,14 +114,15 @@ BooksToSections = {
 
     // Run when clicked
     menuitem.addEventListener('command', async function() {
-      let zpane  = Zotero.getActiveZoteroPane();
-      let items  = zpane.getSelectedItems();
-      let selCol = zpane.getSelectedCollection();
-      let progress     = new Zotero.ProgressWindow();
-      let progressItem = new progress.ItemProgress();
+      let zpane    = Zotero.getActiveZoteroPane();
+      let items    = zpane.getSelectedItems();
+      let selCol   = zpane.getSelectedCollection();
+      let progress = new Zotero.ProgressWindow({ closeOnClick: true, modal: true });;
 
       progress.changeHeadline('Books to Book Sections');
       progress.show();
+      
+      let progressItem = new progress.ItemProgress();
       progressItem.setProgress(0);
       progressItem.setText(`Processing item...`);
 
@@ -105,32 +136,43 @@ BooksToSections = {
 
             let attachment = await Zotero.Items.getAsync(attachItemId);
             let attachType = attachment.attachmentContentType;
+            let libraryId  = Zotero.API.getLibraryPrefix(attachment.libraryID);
 
             if (attachType === 'application/pdf') {
               let pdfPath = attachment.getFilePath();
               let pdfData = await Zotero.File.getBinaryContentsAsync(pdfPath);
-              let pdfObj  = { data: pdfData };
-              let pdfDoc  = await pdfjsLib.getDocument(pdfObj).promise; 
+              let pdfDoc  = await pdfjsLib.getDocument({data : pdfData}).promise; 
               let outline = await pdfDoc.getOutline();
 
               if (!outline) {
-                  log(`No outline found in PDF file ${pdfPath}. Quitting.`);
+                  window.alert(`No outline found. Quitting.`);
                   return;
               }
 
-              let progressIndex = 0;
-              let progressCount = outline.length;
-
               progressItem.setText(`Processing item ${item.getField('title')}...`);
 
-              for (const outlineItem of outline) {
-                let libraryId  = Zotero.API.getLibraryPrefix(attachment.libraryID);
-                let webLinkURL = `zotero://open-pdf/${libraryId}/items/${attachment.key}`;
-                let newSection = await BooksToSections.createBookSection(outlineItem, item, selCol.id);
+              let bookmarks = [];
+
+              let maxdepth = window.prompt('Enter the maximum depth to look into the PDF bookmark. Empty or 0 for maximum depth');
+
+              if (!maxdepth || !Number.isInteger(maxdepth)) {
+                window.alert('Invalid depth value. Enter a positive integer.');
+                break;
+              }
+
+              maxdepth = parseInt(maxdepth);
+
+              await BooksToSections.getBookmarks(pdfDoc, outline, bookmarks, maxdepth);
+
+              let progressIndex = 0;
+              let progressCount = bookmarks.length;
+
+              for (const bookmark of bookmarks) {
+                let { title, page } = bookmark;
+                let webLinkURL = `zotero://open-pdf/${libraryId}/items/${attachment.key}?page=${page}`;
+                let newSection = await BooksToSections.createBookSection(title, item, selCol.id);
 
                 await BooksToSections.addAttachment(newSection.id, webLinkURL);
-
-                log(`link: ${webLinkURL}`);
 
                 progressIndex = progressIndex + 1;
 
@@ -155,12 +197,13 @@ BooksToSections = {
         progressItem.setError();
 
       } finally {
+        log('Ending process');
         progress.close();
 
       }
-
     });
 
+    log('Adding element to item menu');
     menu.appendChild(menuitem);
     this.storeAddedElement(menuitem);
   },
