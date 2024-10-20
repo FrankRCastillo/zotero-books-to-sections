@@ -12,7 +12,11 @@ function log(msg, err)
 
   if (err)
   {
-    log(`Message: ${err.message}`);
+    let errmsg = `Error: ${err.message}`;
+
+    log(errmsg);
+
+    window.alert(`${errmsg}\nSee Debug Output (Help > Debug Output Logging > View Output) for more information.`);
     
     err.stack.trim().split('\n').forEach((line, idx) => 
     {
@@ -21,7 +25,8 @@ function log(msg, err)
   }
 }
 
-function FilePathToURL(path) {
+function FilePathToURL(path)
+{
   return Zotero.isWin ? 'file:///' + path.replace(/\\/g, '/').replace(/ /g, '%20')
                       : 'file://' + path.replace(/ /g, '%20');
 }
@@ -57,33 +62,33 @@ async function parseOutlineFile(path, bookmarks)
 
 async function getBookmarksFromOutline(pdfDocument, outlineItems, store = [], maxDepth = 1)
 {
-	for (let item of outlineItems)
+  for (let item of outlineItems)
   {
-		if (!item.items || item.items.length === 0 || maxDepth == 1)
-	  {
-			if (typeof item.dest === 'object' && item.dest[0]?.num !== undefined)
-		  {
-				let page = await pdfDocument.getPageIndex(item.dest[0]) + 1;
-				
-				store.push({title: item.title, page});
-				continue;
-			}
-			
-			if (typeof item.dest === 'string')
-		  {
-				let [ref, fitType, ...args] = await pdfDocument.getDestination(item.dest); 
-				let page = await pdfDocument.getPageIndex(ref) + 1;
-				let elem = {title: item.title, page};
+    if (!item.items || item.items.length === 0 || maxDepth == 1)
+    {
+      if (typeof item.dest === 'object' && item.dest[0]?.num !== undefined)
+      {
+        let page = await pdfDocument.getPageIndex(item.dest[0]) + 1;
+        
+        store.push({title: item.title, page});
+        continue;
+      }
+      
+      if (typeof item.dest === 'string')
+      {
+        let [ref, fitType, ...args] = await pdfDocument.getDestination(item.dest); 
+        let page = await pdfDocument.getPageIndex(ref) + 1;
+        let elem = {title: item.title, page};
 
-				store.push(elem);
-				continue;
-			}
-		}
-		else
-	  {
-			await getBookmarksFromOutline(pdfDocument, item.items, store, maxDepth - 1);
-		}
-	}
+        store.push(elem);
+        continue;
+      }
+    }
+    else
+    {
+      await getBookmarksFromOutline(pdfDocument, item.items, store, maxDepth - 1);
+    }
+  }
 }
 
 async function createBookSection(title, parentItem, collectionId)
@@ -96,8 +101,10 @@ async function createBookSection(title, parentItem, collectionId)
   let fieldIdx = Zotero.ItemFields.getItemTypeFields(bookSection.itemTypeID);
   let fields   = fieldIdx.map(idx => Zotero.ItemFields.getName(idx));
 
-  for (let field of fields) {
-    if (!['title', 'bookTitle'].includes(field)) {
+  for (let field of fields)
+  {
+    if (!['title', 'bookTitle'].includes(field))
+    {
       let value = parentItem.getField(field);
 
       bookSection.setField(field, value);
