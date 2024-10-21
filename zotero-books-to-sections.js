@@ -282,7 +282,7 @@ BooksToSections = {
             // check if outline exists
             if (pdfOutline && !txtOutline)
             {
-              let maxDepth = window.prompt('Enter the maximum depth to look into the pdf bookmark.');
+              let maxDepth = window.prompt('Enter the maximum depth to look into the PDF bookmark.');
 
               maxDepth = parseInt(maxDepth);
 
@@ -301,7 +301,7 @@ BooksToSections = {
             if (!pdfOutline && !txtOutline)
             {
               let createOutlineMsg = 'No outline found.\n'
-                                   + 'Press OK to create a note and add your outline there.\n'
+                                   + 'Press OK to create an attachment and add your outline there.\n'
                                    + 'Press Cancel to abort.'
               let createOutlineBln = window.confirm(createOutlineMsg);
 
@@ -359,6 +359,7 @@ BooksToSections = {
       finally
       {
         log('Ending');
+        window.alert('Books to Book Sections complete.');
         progress.close();
 
       }
