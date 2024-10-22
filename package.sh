@@ -13,6 +13,7 @@ echo "Done"
 
 echo "Creating new XPI file..."
 zip -r ../$file *
+echo "File created in $(readlink -f ../$file)"
 
 echo -n "Getting release asset ID..."
 jq_cmd=".assets[] | select(.name == \"$file\") | .id"
@@ -23,6 +24,11 @@ echo -n "Loading latest release file..."
 gh release upload $vers ../$file --repo $user/$repo --clobber > /dev/null && echo "Done" || echo "Error"
 
 echo "Updating the tag to the latest commit..."
-git tag -f $version
-git push origin $version --force
+git tag -f $vers
+git push origin $vers --force
 echo "Done updating tag."
+
+echo -n "Updating GitHub release..."
+gh release edit $vers \
+   --repo $user/$repo \
+   --notes "Source code for version $vers" > /dev/null && echo "Done" || echo "Error during release update"

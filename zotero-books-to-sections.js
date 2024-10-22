@@ -39,7 +39,7 @@ async function writeFile(path, content)
 async function parseOutlineFile(path, bookmarks)
 {
   let text = await Zotero.File.getContentsAsync(path);
-  let rows = text.split('\n');
+  let rows = text.replace('\r', '').split('\n');
 
   for (let row of rows)
   {
@@ -218,7 +218,7 @@ BooksToSections = {
       // show progress bar
       let progress = new Zotero.ProgressWindow({ closeOnClick: false, modal: true });
 
-      progress.changeHeadline('Books to Book Sections');
+      progress.changeHeadline('Procesing items...');
 
       let progressItem = new progress.ItemProgress();
       
@@ -330,23 +330,22 @@ BooksToSections = {
 
             for (const bookmark of bookmarks)
             {
+              progressIndex = progressIndex + 1;
+
+              let progressPct = Math.floor((progressIndex / progressCount) * 100);
+
+              progressItem.setText(`Processing ${progressPct}% [${progressIndex}/${progressCount}]`);
+              progressItem.setProgress(progressPct); 
+
               let { title, page } = bookmark;
               let webLinkURL = `zotero://open-pdf/${libraryId}/items/${attachment.key}?page=${page}`;
               let newSection = await createBookSection(title, item, selectedCollection.id);
 
               await addAttachment(newSection.id, webLinkURL, webLinkURL);
-
-              progressIndex = progressIndex + 1;
-
-              let progressPct = Math.floor((progressIndex / progressCount) * 100);
-
-              progressItem.setText(`Finished ${progressIndex} of ${progressCount}`);
-              progressItem.setProgress(progressPct); 
             }
 
-            progressItem.setText(`Finished ${item.getField('title')}`);
+            progressItem.setText(`Done`);
             progressItem.setProgress(100);
-
           }
         }
       }
@@ -354,14 +353,11 @@ BooksToSections = {
       {
         log('Error processing items', e);
         progressItem.setError();
-
       }
       finally
       {
         log('Ending');
-        window.alert('Books to Book Sections complete.');
-        progress.close();
-
+        progress.startCloseTimer(1000);
       }
     });
 
