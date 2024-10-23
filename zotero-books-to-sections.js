@@ -215,18 +215,6 @@ BooksToSections = {
     // run when clicked
     menuItem.addEventListener('command', async function()
     {
-      // show progress bar
-      let progress = new Zotero.ProgressWindow({ closeOnClick: false, modal: true });
-
-      progress.changeHeadline('Procesing items...');
-
-      let progressItem = new progress.ItemProgress();
-      
-      progressItem.setProgress(0);
-      progressItem.setText(`Processing item...`);
-
-      progress.show();
-
       let zpane = Zotero.getActiveZoteroPane();
       let selectedItems      = zpane.getSelectedItems();
       let selectedCollection = zpane.getSelectedCollection();
@@ -247,12 +235,14 @@ BooksToSections = {
             let attachment = await Zotero.Items.getAsync(attachItemId);
             let attachType = attachment.attachmentContentType;
 
+            // if attachment is not a PDF, skip to next
             if (attachType !== 'application/pdf')
             {
               log(`Not a valid PDF file. skipping ${attachItemId}`);
               continue;
             }
 
+            // process PDF attachment
             let attachPath  = attachment.getFilePath();
             let attachDir   = Zotero.File.pathToFile(attachPath).parent.path;
             let pdfBinary   = await Zotero.File.getBinaryContentsAsync(attachPath);
@@ -260,6 +250,7 @@ BooksToSections = {
             let pdfOutline  = await pdfDocument.getOutline();
             let outlinePath = Zotero.File.pathToFile(attachDir);
 
+            // load outline file
             outlinePath.append(outlineFileName);
 
             outlinePath = outlinePath.path;
@@ -269,14 +260,18 @@ BooksToSections = {
             let txtOutline = await getAttachment(item, outlineFileName);
             let bookmarks  = [];
 
-            progressItem.setText(`Processing item ${itemTitle}...`);
-
             // check if outline note exists in item
             if (txtOutline)
             {
               log(`outline-b2bs.txt file found. Creating bookmarks from file ${outlinePath}.`);
 
               await parseOutlineFile(outlinePath, bookmarks);
+
+              if (bookmarks.length === 0)
+              {
+                  window.alert('The outline file for this item is empty. Please revise and try again. Skipping.');
+                  continue;
+              }
             }
 
             // check if outline exists
@@ -291,8 +286,8 @@ BooksToSections = {
               // End if maximum depth is neither an integer or is less than/equal to zero
               if (!Number.isInteger(maxDepth) || maxDepth <= 0)
               {
-                window.alert('Invalid depth value. Enter a positive integer.');
-                break;
+                window.alert('Invalid depth value. Enter a positive integer. Skipping to next file, if any.');
+                continue;
               }
 
               await getBookmarksFromOutline(pdfDocument, pdfOutline, bookmarks, maxDepth);
@@ -328,14 +323,15 @@ BooksToSections = {
             let progressCount = bookmarks.length;
             let libraryId  = Zotero.API.getLibraryPrefix(attachment.libraryID);
 
+            Zotero.showZoteroPaneProgressMeter(null, true);
+
             for (const bookmark of bookmarks)
             {
               progressIndex = progressIndex + 1;
 
               let progressPct = Math.floor((progressIndex / progressCount) * 100);
 
-              progressItem.setText(`Processing ${progressPct}% [${progressIndex}/${progressCount}]`);
-              progressItem.setProgress(progressPct); 
+              Zotero.updateZoteroPaneProgressMeter(progressPct);
 
               let { title, page } = bookmark;
               let webLinkURL = `zotero://open-pdf/${libraryId}/items/${attachment.key}?page=${page}`;
@@ -343,21 +339,19 @@ BooksToSections = {
 
               await addAttachment(newSection.id, webLinkURL, webLinkURL);
             }
-
-            progressItem.setText(`Done`);
-            progressItem.setProgress(100);
           }
         }
       }
       catch (e)
       {
         log('Error processing items', e);
-        progressItem.setError();
+        // progressItem.setError();
       }
       finally
       {
         log('Ending');
-        progress.startCloseTimer(1000);
+        // progress.startCloseTimer(1000);
+        Zotero.hideZoteroPaneOverlays();
       }
     });
 
