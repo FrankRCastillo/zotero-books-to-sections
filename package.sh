@@ -2,10 +2,7 @@
 
 set -e
 
-user="FrankRCastillo"
-repo="zotero-books-to-sections"
-file="$repo.xpi"
-vers="0.1.0"
+file="zotero-books-to-sections.xpi"
 
 echo -n "Deleting old XPI file..."
 rm -rf ../$file
